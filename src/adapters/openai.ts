@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
-import { ModelConfig, AnthropicRequest, OpenAIMessage } from '../types';
+import { ProviderConfig, AnthropicRequest, OpenAIMessage } from '../types';
 import { getNextKey } from '../lb/round_robin';
 
-export async function handleOpenAIProxy(req: Request, res: Response, modelName: string, config: ModelConfig) {
-  const apiKey = getNextKey(modelName, config);
-  const endpoint = config.endpoint;
+export async function handleOpenAIProxy(req: Request, res: Response, providerName: string, config: ProviderConfig) {
+  const apiKey = getNextKey(providerName, config);
+  const endpoint = config.base_url;
 
   const anthropicReq = req.body as AnthropicRequest;
   const isStream = !!anthropicReq.stream;
@@ -38,7 +38,12 @@ export async function handleOpenAIProxy(req: Request, res: Response, modelName: 
     stream: isStream,
     temperature: anthropicReq.temperature,
     max_tokens: anthropicReq.max_tokens,
+    stream_options: isStream ? { include_usage: true } : undefined
   };
+
+  // Estimate input tokens for message_start (OpenAI streaming only returns usage at the end)
+  const reqStr = JSON.stringify(openAIMessages);
+  const estimatedInputTokens = Math.ceil(reqStr.length / 3.5);
 
   try {
     const fetchResponse = await fetch(endpoint, {
@@ -68,7 +73,7 @@ export async function handleOpenAIProxy(req: Request, res: Response, modelName: 
         id: data.id || `msg_${Date.now()}`,
         type: 'message',
         role: 'assistant',
-        model: data.model || modelName,
+        model: data.model || anthropicReq.model,
         content: [
           {
             type: 'text',
@@ -89,6 +94,7 @@ export async function handleOpenAIProxy(req: Request, res: Response, modelName: 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders(); // Force headers to be sent immediately
 
     if (!fetchResponse.body) {
       return res.end();
@@ -110,7 +116,7 @@ export async function handleOpenAIProxy(req: Request, res: Response, modelName: 
         role: 'assistant',
         model: anthropicReq.model,
         content: [],
-        usage: { input_tokens: 0, output_tokens: 0 }
+        usage: { input_tokens: estimatedInputTokens, output_tokens: 0 }
       }
     });
 
@@ -123,6 +129,7 @@ export async function handleOpenAIProxy(req: Request, res: Response, modelName: 
     const reader = fetchResponse.body.getReader();
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
+    let finalOutputTokens = 0;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -143,6 +150,10 @@ export async function handleOpenAIProxy(req: Request, res: Response, modelName: 
           const parsed = JSON.parse(dataStr);
           const delta = parsed.choices?.[0]?.delta?.content;
           
+          if (parsed.usage) {
+            finalOutputTokens = parsed.usage.completion_tokens || 0;
+          }
+
           if (delta) {
             emitEvent('content_block_delta', {
               type: 'content_block_delta',
@@ -154,8 +165,7 @@ export async function handleOpenAIProxy(req: Request, res: Response, modelName: 
             });
           }
         } catch (e) {
-          // ignore parse error for incomplete chunks if any (though split by \n should avoid most)
-          console.error('[OpenAI Adapter] Parse error on chunk:', dataStr);
+          // ignore parse error for incomplete chunks
         }
       }
     }
@@ -166,6 +176,12 @@ export async function handleOpenAIProxy(req: Request, res: Response, modelName: 
       index: 0
     });
 
+    emitEvent('message_delta', {
+      type: 'message_delta',
+      delta: { stop_reason: 'end_turn', stop_sequence: null },
+      usage: { output_tokens: finalOutputTokens }
+    });
+
     emitEvent('message_stop', {
       type: 'message_stop'
     });
@@ -173,7 +189,7 @@ export async function handleOpenAIProxy(req: Request, res: Response, modelName: 
     res.end();
 
   } catch (err: any) {
-    console.error(`[OpenAI Adapter] Error proxying to ${modelName}:`, err.message);
+    console.error(`[OpenAI Adapter] Error proxying to ${providerName}:`, err.message);
     res.status(500).json({
       error: {
         type: 'api_error',

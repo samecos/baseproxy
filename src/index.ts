@@ -4,6 +4,7 @@ import { getConfig } from './config';
 import { authMiddleware } from './middleware/auth';
 import { handleAnthropicProxy } from './adapters/anthropic';
 import { handleOpenAIProxy } from './adapters/openai';
+import { fetchProviderBalance } from './usage';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,6 +15,52 @@ app.use(express.json({ limit: '50mb' })); // Support large payloads
 // Health check
 app.get('/', (req, res) => {
   res.send('BaseProxy is running.');
+});
+
+// Unified Usage/Balance API for cc-switch
+app.all('/usage', authMiddleware, async (req, res) => {
+  const config = getConfig();
+  const targetModel = (req.headers['x-model'] || req.query.model) as string;
+
+  let providersToQuery = Object.entries(config.providers);
+
+  if (targetModel) {
+    const matchedProvider = providersToQuery.find(([_, pConfig]) => pConfig.models.includes(targetModel));
+    if (matchedProvider) {
+      providersToQuery = [matchedProvider];
+    } else {
+      return res.status(404).json({ error: `Provider for model '${targetModel}' not found in config` });
+    }
+  }
+
+  let totalRemaining = 0;
+  const details: Record<string, number> = {};
+  let currentUnit = 'CNY';
+
+  try {
+    const fetchPromises = providersToQuery.map(async ([pName, pConfig]) => {
+      const bal = await fetchProviderBalance(pName, pConfig);
+      details[pName] = bal;
+      totalRemaining += bal;
+      
+      if (pName.toLowerCase().includes('kimi')) {
+        currentUnit = 'Requests';
+      } else if (pName.toLowerCase().includes('deepseek')) {
+        currentUnit = 'CNY';
+      }
+    });
+
+    await Promise.all(fetchPromises);
+
+    res.json({
+      isValid: true,
+      balance: totalRemaining,
+      unit: providersToQuery.length === 1 ? currentUnit : 'Mixed',
+      details
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // The main proxy endpoint (Anthropic format)
@@ -28,22 +75,31 @@ app.post('/v1/messages', authMiddleware, async (req, res) => {
       });
     }
 
-    const modelConfig = config.models[modelName];
+    let targetProvider: string | null = null;
+    let providerConfig: any = null;
 
-    if (!modelConfig) {
+    for (const [providerName, pConfig] of Object.entries(config.providers)) {
+      if (pConfig.models.includes(modelName)) {
+        targetProvider = providerName;
+        providerConfig = pConfig;
+        break;
+      }
+    }
+
+    if (!providerConfig) {
       return res.status(404).json({
-        error: { type: 'not_found_error', message: `Model '${modelName}' not found in configuration.` }
+        error: { type: 'not_found_error', message: `Model '${modelName}' not found in any provider configuration.` }
       });
     }
 
     // Route to appropriate adapter
-    if (modelConfig.type === 'anthropic') {
-      await handleAnthropicProxy(req, res, modelName, modelConfig);
-    } else if (modelConfig.type === 'openai') {
-      await handleOpenAIProxy(req, res, modelName, modelConfig);
+    if (providerConfig.type === 'anthropic') {
+      await handleAnthropicProxy(req, res, targetProvider!, providerConfig);
+    } else if (providerConfig.type === 'openai') {
+      await handleOpenAIProxy(req, res, targetProvider!, providerConfig);
     } else {
       return res.status(500).json({
-        error: { type: 'internal_error', message: `Unknown model type: ${(modelConfig as any).type}` }
+        error: { type: 'internal_error', message: `Unknown provider type: ${providerConfig.type}` }
       });
     }
 

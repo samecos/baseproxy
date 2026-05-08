@@ -2,16 +2,17 @@ export interface Config {
   auth: {
     valid_tokens: string[];
   };
-  models: {
-    [modelName: string]: ModelConfig;
+  providers: {
+    [providerName: string]: ProviderConfig;
   };
 }
 
-export interface ModelConfig {
+export interface ProviderConfig {
   type: 'anthropic' | 'openai';
-  endpoint: string;
+  base_url: string;
   keys: string[];
   lb_strategy: 'round_robin';
+  models: string[];
 }
 
 // Anthropic Request Format

@@ -1,0 +1,74 @@
+{
+  "auth": {
+    "valid_tokens": [
+      "sk-proxy-admin-1",
+      "sk-proxy-admin-2"
+    ]
+  },
+  "models": {
+    "claude-3-5-sonnet-20241022": {
+      "type": "anthropic",
+      "endpoint": "https://api.kimi.com/coding/v1/messages",
+      "keys": [
+        "XXXX",
+        "YOUR_KIMI_KEY_2",
+        "YOUR_KIMI_KEY_3",
+        "YOUR_KIMI_KEY_4",
+        "YOUR_KIMI_KEY_5"
+      ],
+      "lb_strategy": "round_robin"
+    },
+    "claude-3-5-haiku-20241022": {
+      "type": "anthropic",
+      "endpoint": "https://api.kimi.com/coding/v1/messages",
+      "keys": [
+        "XXXX",
+        "YOUR_KIMI_KEY_2",
+        "YOUR_KIMI_KEY_3",
+        "YOUR_KIMI_KEY_4",
+        "YOUR_KIMI_KEY_5"
+      ],
+      "lb_strategy": "round_robin"
+    },
+    "claude-3-opus-20240229": {
+      "type": "anthropic",
+      "endpoint": "https://api.kimi.com/coding/v1/messages",
+      "keys": [
+        "XXXX"
+      ],
+      "lb_strategy": "round_robin"
+    },
+    "deepseek-v4-pro[1m]": {
+      "type": "anthropic",
+      "endpoint": "https://api.deepseek.com/anthropic/v1/messages",
+      "keys": [
+        "XXXXX"
+      ],
+      "lb_strategy": "round_robin"
+    },
+    "deepseek-v4-pro": {
+      "type": "anthropic",
+      "endpoint": "https://api.deepseek.com/anthropic/v1/messages",
+      "keys": [
+        "XXXXX"
+      ],
+      "lb_strategy": "round_robin"
+    },
+    "deepseek-v4-flash": {
+      "type": "anthropic",
+      "endpoint": "https://api.deepseek.com/anthropic/v1/messages",
+      "keys": [
+        "XXXXX"
+      ],
+      "lb_strategy": "round_robin"
+    },
+    "ollama-llama3": {
+      "type": "openai",
+      "endpoint": "http://127.0.0.1:11434/v1/chat/completions",
+      "keys": [
+        ""
+      ],
+      "lb_strategy": "round_robin"
+    }
+  }
+}
