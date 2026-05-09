@@ -10,7 +10,29 @@ export async function fetchProviderBalance(providerName: string, config: Provide
     if (!key || key.startsWith('XXXX')) continue; // Skip placeholders
 
     try {
-      if (providerName.toLowerCase().includes('deepseek')) {
+      if (providerName.toLowerCase().includes('gemini') || config.type === 'gemini') {
+        // Mock free tier for Google AI Studio
+        metadata = {
+          tiers: [
+            {
+              name: "five_hour",
+              limit: 100,
+              remaining: 100,
+              utilization: 100,
+              resets_at: new Date(Date.now() + 5 * 3600000).toISOString()
+            },
+            {
+              name: "weekly_limit",
+              limit: 1000,
+              remaining: 1000,
+              utilization: 100,
+              resets_at: null
+            }
+          ]
+        };
+        totalBalance = 100;
+        break; // No need to loop
+      } else if (providerName.toLowerCase().includes('deepseek')) {
         const res = await fetch('https://api.deepseek.com/user/balance', {
           headers: { 'Authorization': `Bearer ${key}`, 'Accept': 'application/json' }
         });

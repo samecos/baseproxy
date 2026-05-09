@@ -4,6 +4,7 @@ import { getConfig } from './config';
 import { authMiddleware } from './middleware/auth';
 import { handleAnthropicProxy } from './adapters/anthropic';
 import { handleOpenAIProxy } from './adapters/openai';
+import { handleGeminiProxy } from './adapters/gemini';
 import { fetchProviderBalance } from './usage';
 
 const app = express();
@@ -52,6 +53,8 @@ app.all('/usage', authMiddleware, async (req, res) => {
         currentUnit = 'Requests';
       } else if (pName.toLowerCase().includes('deepseek')) {
         currentUnit = 'CNY';
+      } else if (pName.toLowerCase().includes('gemini') || pConfig.type === 'gemini') {
+        currentUnit = 'Free Tier';
       }
     });
 
@@ -103,6 +106,8 @@ app.post('/v1/messages', authMiddleware, async (req, res) => {
       await handleAnthropicProxy(req, res, targetProvider!, providerConfig);
     } else if (providerConfig.type === 'openai') {
       await handleOpenAIProxy(req, res, targetProvider!, providerConfig);
+    } else if (providerConfig.type === 'gemini') {
+      await handleGeminiProxy(req, res, targetProvider!, providerConfig);
     } else {
       return res.status(500).json({
         error: { type: 'internal_error', message: `Unknown provider type: ${providerConfig.type}` }
