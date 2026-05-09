@@ -36,12 +36,17 @@ app.all('/usage', authMiddleware, async (req, res) => {
   let totalRemaining = 0;
   const details: Record<string, number> = {};
   let currentUnit = 'CNY';
+  let rootTiers: any[] = [];
 
   try {
     const fetchPromises = providersToQuery.map(async ([pName, pConfig]) => {
-      const bal = await fetchProviderBalance(pName, pConfig);
-      details[pName] = bal;
-      totalRemaining += bal;
+      const result = await fetchProviderBalance(pName, pConfig);
+      details[pName] = result.balance;
+      totalRemaining += result.balance;
+      
+      if (result.metadata?.tiers) {
+        rootTiers = rootTiers.concat(result.metadata.tiers);
+      }
       
       if (pName.toLowerCase().includes('kimi')) {
         currentUnit = 'Requests';
@@ -56,7 +61,8 @@ app.all('/usage', authMiddleware, async (req, res) => {
       isValid: true,
       balance: totalRemaining,
       unit: providersToQuery.length === 1 ? currentUnit : 'Mixed',
-      details
+      details,
+      tiers: rootTiers.length > 0 ? rootTiers : undefined
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

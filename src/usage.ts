@@ -1,9 +1,10 @@
 import { ProviderConfig } from './types';
 
-export async function fetchProviderBalance(providerName: string, config: ProviderConfig): Promise<number> {
+export async function fetchProviderBalance(providerName: string, config: ProviderConfig): Promise<{ balance: number, metadata?: any }> {
   let totalBalance = 0;
+  let metadata: any = {};
   
-  if (!config.keys || config.keys.length === 0) return 0;
+  if (!config.keys || config.keys.length === 0) return { balance: 0 };
 
   for (const key of config.keys) {
     if (!key || key.startsWith('XXXX')) continue; // Skip placeholders
@@ -28,12 +29,43 @@ export async function fetchProviderBalance(providerName: string, config: Provide
         
         if (codingRes.ok) {
           const data = await codingRes.json();
-          // 优先取周额度 remaining，如果没有则取 5小时额度 detail.remaining
-          if (data.usage && data.usage.remaining) {
-            totalBalance += parseFloat(data.usage.remaining);
-          } else if (data.limits && data.limits[0]?.detail?.remaining) {
-            totalBalance += parseFloat(data.limits[0].detail.remaining);
+          
+          let shortTermLimit = 0, shortTermRemaining = 0, shortTermResetTime = null;
+          let longTermLimit = 0, longTermRemaining = 0;
+
+          if (data.usage) {
+            shortTermLimit = parseFloat(data.usage.limit || "0");
+            shortTermRemaining = parseFloat(data.usage.remaining || "0");
+            shortTermResetTime = data.usage.resetTime;
+            // 把短期剩余额度当做主显示数字
+            totalBalance = shortTermRemaining; 
           }
+          if (data.totalQuota) {
+            longTermLimit = parseFloat(data.totalQuota.limit || "0");
+            longTermRemaining = parseFloat(data.totalQuota.remaining || "0");
+          }
+
+          metadata = {
+            tiers: [
+              {
+                name: "five_hour",
+                limit: shortTermLimit,
+                remaining: shortTermRemaining,
+                utilization: shortTermLimit > 0 ? ((shortTermLimit - shortTermRemaining) / shortTermLimit) * 100 : 0,
+                resets_at: shortTermResetTime
+              },
+              {
+                name: "weekly_limit",
+                limit: longTermLimit,
+                remaining: longTermRemaining,
+                utilization: longTermLimit > 0 ? ((longTermLimit - longTermRemaining) / longTermLimit) * 100 : 0,
+                resets_at: null
+              }
+            ]
+          };
+
+          // KIMI 是共享账号的套餐，不需要遍历后续的所有 Key
+          break;
         } else {
           // 如果失败，回退到普通的 Moonshot 开放平台查询 (CNY 余额)
           const res = await fetch('https://api.moonshot.cn/v1/users/me/balance', {
@@ -52,5 +84,5 @@ export async function fetchProviderBalance(providerName: string, config: Provide
     }
   }
 
-  return totalBalance;
+  return { balance: totalBalance, metadata };
 }
