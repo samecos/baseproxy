@@ -32,6 +32,34 @@ export async function fetchProviderBalance(providerName: string, config: Provide
         };
         totalBalance = 100;
         break; // No need to loop
+      } else if (providerName.toLowerCase().includes('antigravity') || config.type === 'antigravity') {
+        // Health check the Antigravity proxy
+        const baseUrl = config.base_url?.replace(/\/+$/, '');
+        let healthy = false;
+        if (baseUrl) {
+          try {
+            const healthRes = await fetch(`${baseUrl}/health`, { signal: AbortSignal.timeout(3000) });
+            healthy = healthRes.ok;
+          } catch {
+            // not reachable
+          }
+        }
+        if (healthy) {
+          metadata = {
+            tiers: [{
+              name: "subscription",
+              limit: -1,
+              remaining: 9999,
+              utilization: 0,
+              resets_at: null,
+            }],
+          };
+          totalBalance = 9999;
+        } else {
+          totalBalance = 0;
+          metadata = { error: 'Antigravity proxy not reachable' };
+        }
+        break;
       } else if (providerName.toLowerCase().includes('deepseek')) {
         const res = await fetch('https://api.deepseek.com/user/balance', {
           headers: { 'Authorization': `Bearer ${key}`, 'Accept': 'application/json' }

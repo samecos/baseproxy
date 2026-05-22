@@ -5,6 +5,7 @@ import { authMiddleware } from './middleware/auth';
 import { handleAnthropicProxy } from './adapters/anthropic';
 import { handleOpenAIProxy } from './adapters/openai';
 import { handleGeminiProxy } from './adapters/gemini';
+import { handleAntigravityProxy } from './adapters/antigravity';
 import { fetchProviderBalance } from './usage';
 
 const app = express();
@@ -108,6 +109,8 @@ app.post('/v1/messages', authMiddleware, async (req, res) => {
       await handleOpenAIProxy(req, res, targetProvider!, providerConfig);
     } else if (providerConfig.type === 'gemini') {
       await handleGeminiProxy(req, res, targetProvider!, providerConfig);
+    } else if (providerConfig.type === 'antigravity') {
+      await handleAntigravityProxy(req, res, targetProvider!, providerConfig);
     } else {
       return res.status(500).json({
         error: { type: 'internal_error', message: `Unknown provider type: ${providerConfig.type}` }
