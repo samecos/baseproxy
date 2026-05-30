@@ -36,7 +36,8 @@ npm run dev
 npm run build
 npm start
 ```
-*服务默认运行在 `http://localhost:3000`。*
+
+_服务默认运行在 `http://localhost:10010`。_
 
 ---
 
@@ -50,7 +51,7 @@ npm start
 {
   "auth": {
     "valid_tokens": [
-      "sk-proxy-admin-1",  // 客户端访问代理必须在请求头中携带此 Token
+      "sk-proxy-admin-1", // 客户端访问代理必须在请求头中携带此 Token
       "sk-proxy-admin-2"
     ]
   },
@@ -58,10 +59,7 @@ npm start
     "kimi-code-model": {
       "type": "anthropic",
       "endpoint": "https://api.moonshot.cn/v1/messages",
-      "keys": [
-        "sk-kimi-key-1",
-        "sk-kimi-key-2"
-      ],
+      "keys": ["sk-kimi-key-1", "sk-kimi-key-2"],
       "lb_strategy": "round_robin"
     },
     "deepseek-chat": {
@@ -81,6 +79,7 @@ npm start
 ```
 
 ### 参数解释：
+
 - **`auth.valid_tokens`**: 允许访问代理服务的 Token 列表。
 - **`models.[模型名称]`**: 您可以在这里自由定义模型别名，外部调用时只需传入这个别名即可。
   - **`type`**: `anthropic`（透传模式） 或 `openai`（自动转换模式）。
@@ -94,11 +93,12 @@ npm start
 您可以将任何支持配置“自定义 API 端点”的第三方工具（如 Chatbox, Dify, NextChat 等）接入 BaseProxy：
 
 - **提供商 / API 格式**：选择 `Anthropic` / `Claude`
-- **API URL (Base URL)**：填写 `http://<您的服务器IP>:3000/v1/messages` (部分客户端只需要填 `http://<您的服务器IP>:3000`)
+- **API URL (Base URL)**：填写 `http://<您的服务器IP>:10010/v1/messages` (部分客户端只需要填 `http://<您的服务器IP>:10010`)
 - **API Key**：填写您在 `config.json` 中配置的 `valid_tokens` (如 `sk-proxy-admin-1`)
 - **模型**：填写您在 `models` 下配置的名称（如 `kimi-code-model`, `deepseek-chat`, `ollama-llama3` 等）。
 
 ---
 
 ## 📄 许可协议
+
 本项目采用 [MIT License](LICENSE) 开源。

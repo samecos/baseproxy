@@ -4,8 +4,11 @@
     {
       "name": "baseproxy",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["ts-node", "src/index.ts"],
-      "port": 3000
+      "runtimeArgs": [
+        "ts-node",
+        "src/index.ts"
+      ],
+      "port": 10010
     }
   ]
 }
