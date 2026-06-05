@@ -8,7 +8,7 @@ export interface Config {
 }
 
 export interface ProviderConfig {
-  type?: 'anthropic' | 'openai' | 'gemini' | 'antigravity';
+  type?: 'anthropic' | 'openai' | 'gemini' | 'antigravity' | 'local';
   base_url: string;
   keys: string[];
   lb_strategy: 'round_robin';

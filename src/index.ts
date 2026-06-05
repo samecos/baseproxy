@@ -6,6 +6,7 @@ import { handleAnthropicProxy } from "./adapters/anthropic";
 import { handleOpenAIProxy } from "./adapters/openai";
 import { handleGeminiProxy } from "./adapters/gemini";
 import { handleAntigravityProxy } from "./adapters/antigravity";
+import { handleLocalProxy } from "./adapters/local";
 import { fetchProviderBalance } from "./usage";
 
 const app = express();
@@ -33,11 +34,9 @@ app.all("/usage", authMiddleware, async (req, res) => {
     if (matchedProvider) {
       providersToQuery = [matchedProvider];
     } else {
-      return res
-        .status(404)
-        .json({
-          error: `Provider for model '${targetModel}' not found in config`,
-        });
+      return res.status(404).json({
+        error: `Provider for model '${targetModel}' not found in config`,
+      });
     }
   }
 
@@ -126,6 +125,8 @@ app.post("/v1/messages", authMiddleware, async (req, res) => {
       await handleGeminiProxy(req, res, targetProvider!, providerConfig);
     } else if (providerConfig.type === "antigravity") {
       await handleAntigravityProxy(req, res, targetProvider!, providerConfig);
+    } else if (providerConfig.type === "local") {
+      await handleLocalProxy(req, res, targetProvider!, providerConfig);
     } else {
       return res.status(500).json({
         error: {
@@ -142,6 +143,9 @@ app.post("/v1/messages", authMiddleware, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`[BaseProxy] Server listening on port ${PORT}`);
+const HOST = process.env.HOST || "127.0.0.1";
+const portNum = Number(PORT);
+
+app.listen(portNum, HOST, () => {
+  console.log(`[BaseProxy] Server listening on http://${HOST}:${portNum}`);
 });

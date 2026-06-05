@@ -6,6 +6,13 @@
     ]
   },
   "providers": {
+    "local-model": {
+      "type": "local",
+      "base_url": "http://YOUR_LOCAL_IP:PORT",
+      "keys": [""],
+      "lb_strategy": "round_robin",
+      "models": ["qwen/qwen3-coder-next"]
+    },
     "claude-sonnet-4-6": {
       "type": "anthropic",
       "base_url": "https://api.kimi.com/coding/v1/messages",
